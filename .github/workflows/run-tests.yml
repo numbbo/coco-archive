@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        deps: [all-extras]
+        include:
+          # without pyarrow, so Archive.write_parquet falls back to polars
+          - {runs-on: ubuntu-latest, python-version: "3.10", deps: no-extras}
+          - {runs-on: ubuntu-latest, python-version: "3.14", deps: no-extras}
+          # the lowest versions allowed by pyproject.toml, on the lowest Python
+          - {runs-on: ubuntu-latest, python-version: "3.10", deps: lowest}
+    runs-on: ${{matrix.runs-on}}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # the steps below use uv run --no-sync, which would otherwise re-resolve the lowest versions to uv.lock
+      - name: Install the project
+        run: >-
+          uv sync --dev
+          ${{ matrix.deps != 'no-extras' && '--all-extras' || '' }}
+          ${{ matrix.deps == 'lowest' && '--resolution lowest-direct' || '' }}
+
+      - name: Lint with ruff
+        run: uv run --no-sync ruff check --output-format=github .
+
+      - name: Run tests
+        run: uv run --no-sync pytest --cov=coco_archive --cov-report=term-missing
+
+      # catches packaging mistakes before tag-release builds and publishes the package
+      - name: Build Python packages
+        if: matrix.runs-on == 'ubuntu-latest' && matrix.python-version == '3.14' && matrix.deps == 'all-extras'
+        run: uv build

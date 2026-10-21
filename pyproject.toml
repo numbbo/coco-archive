@@ -1,0 +1,67 @@
+[build-system]
+requires = [
+    "hatchling",
+    "versioningit",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "coco-archive"
+description = "Read, convert and write COCO benchmarking result archives, independent of cocopp, using polars."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+dependencies = [
+  "polars>=2.0",
+]
+dynamic = ["version"]
+
+[project.scripts]
+coco-archive = "coco_archive.cli:main"
+
+[project.optional-dependencies]
+# smaller Parquet files, see Archive.write_parquet
+pyarrow = ["pyarrow>=15"]
+
+[project.urls]
+Homepage = "https://coco-platform.org/"
+Issues = "https://github.com/numbbo/coco-archive/issues"
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.hatch.build]
+artifacts = ["src/coco_archive/_version.py"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coco_archive"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/conftest.py",
+]
+exclude = ["/.gitignore"]
+
+[tool.versioningit.vcs]
+# version before the first release tag
+default-tag = "v0.0.0"
+
+[tool.versioningit.write]
+file = "src/coco_archive/_version.py"
+
+[tool.ruff]
+line-length = 120
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src"]
+addopts = ["--doctest-modules"]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
